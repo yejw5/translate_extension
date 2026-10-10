@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>对照翻译 · 设置</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>对照翻译 · 设置</h1>
+        <p class="sub">配置你自己的大模型服务。密钥只保存在本机（chrome.storage.local），不会上传到任何第三方。</p>
+      </header>
+
+      <section>
+        <h2>模型服务</h2>
+        <div class="field">
+          <label for="provider">服务商预设</label>
+          <div class="ctl">
+            <select id="provider"></select>
+            <p class="hint" id="providerHint">选择预设后会自动填好地址与协议，也可以手动修改。</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="apiStyle">接口协议</label>
+          <div class="ctl">
+            <select id="apiStyle">
+              <option value="openai">OpenAI 兼容（/chat/completions）</option>
+              <option value="anthropic">Anthropic Messages</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="endpoint">服务端地址</label>
+          <div class="ctl">
+            <input id="endpoint" type="text" spellcheck="false" placeholder="https://api.deepseek.com/v1/chat/completions" />
+            <p class="hint">只填到 <code>/v1</code> 也可以，会自动补全路径。Gemini 填到 <code>/v1beta</code> 即可。</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="model">模型名称</label>
+          <div class="ctl"><input id="model" type="text" spellcheck="false" placeholder="deepseek-chat" /></div>
+        </div>
+        <div class="field">
+          <label for="apiKey">API Key</label>
+          <div class="ctl">
+            <div class="inline">
+              <input id="apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="sk-..." />
+              <button class="btn ghost" id="toggleKey" type="button">显示</button>
+            </div>
+            <p class="hint">本地模型（如 Ollama）可以留空。</p>
+          </div>
+        </div>
+        <div class="field">
+          <label></label>
+          <div class="ctl">
+            <div class="inline">
+              <button class="btn" id="test" type="button">测试连接</button>
+              <span id="testResult" class="result"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>语言</h2>
+        <div class="field">
+          <label for="sourceLang">原文语言</label>
+          <div class="ctl"><select id="sourceLang"></select></div>
+        </div>
+        <div class="field">
+          <label for="targetLang">译文语言</label>
+          <div class="ctl">
+            <select id="targetLang"></select>
+            <p class="hint">默认 英语 → 简体中文。</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="extraPrompt">额外要求</label>
+          <div class="ctl">
+            <textarea id="extraPrompt" rows="3" placeholder="例如：技术文档风格；token 统一译为「令牌」；保留英文缩写。"></textarea>
+            <p class="hint">会作为补充指令拼进提示词，可用于术语表、语气、行业风格。</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>展示</h2>
+        <div class="field">
+          <label for="displayStyle">对照样式</label>
+          <div class="ctl">
+            <select id="displayStyle">
+              <option value="border">左侧竖线（默认）</option>
+              <option value="plain">无装饰</option>
+              <option value="dashed">虚线分隔</option>
+              <option value="card">浅色卡片</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="buttonPosition">悬浮按钮位置</label>
+          <div class="ctl">
+            <select id="buttonPosition">
+              <option value="bottom-right">右下角</option>
+              <option value="bottom-left">左下角</option>
+              <option value="top-right">右上角</option>
+              <option value="top-left">左上角</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>开关</label>
+          <div class="ctl">
+            <label class="check"><input type="checkbox" id="showButton" /> 在网页上显示悬浮翻译按钮</label>
+            <label class="check"><input type="checkbox" id="preserveInline" /> 译文中保留超链接与行内代码（和原文一样可点击、同样高亮）</label>
+            <label class="check"><input type="checkbox" id="autoTranslateNew" /> 翻译后自动翻译新加载的内容（无限滚动页面）</label>
+            <label class="check"><input type="checkbox" id="useCache" /> 缓存译文，重复内容不再消耗 token</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="autoTranslateHosts">自动翻译域名</label>
+          <div class="ctl">
+            <textarea id="autoTranslateHosts" rows="2" placeholder="每行一个域名，例如：&#10;news.ycombinator.com&#10;arxiv.org"></textarea>
+            <p class="hint">打开这些域名的页面时自动开始翻译。</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>性能与高级</h2>
+        <div class="field">
+          <label for="concurrency">并发请求</label>
+          <div class="ctl"><input id="concurrency" type="number" min="1" max="16" /><p class="hint">越大越快，但更容易触发服务端限流（429）。</p></div>
+        </div>
+        <div class="field">
+          <label for="batchSize">每批段落数</label>
+          <div class="ctl"><input id="batchSize" type="number" min="1" max="40" /></div>
+        </div>
+        <div class="field">
+          <label for="batchChars">每批字符数</label>
+          <div class="ctl"><input id="batchChars" type="number" min="200" max="20000" step="100" /></div>
+        </div>
+        <div class="field">
+          <label for="temperature">温度</label>
+          <div class="ctl"><input id="temperature" type="number" min="0" max="2" step="0.1" /></div>
+        </div>
+        <div class="field">
+          <label for="timeout">超时(ms)</label>
+          <div class="ctl"><input id="timeout" type="number" min="5000" max="300000" step="1000" /></div>
+        </div>
+        <div class="field">
+          <label for="maxRetries">失败重试</label>
+          <div class="ctl"><input id="maxRetries" type="number" min="0" max="5" /></div>
+        </div>
+        <div class="field">
+          <label for="minTextLength">最短翻译长度</label>
+          <div class="ctl"><input id="minTextLength" type="number" min="1" max="100" /><p class="hint">短于该字符数的文本不翻译，可过滤掉零散的按钮文字。</p></div>
+        </div>
+        <div class="field">
+          <label>缓存</label>
+          <div class="ctl">
+            <div class="inline">
+              <button class="btn ghost" id="clearCache" type="button">清空译文缓存</button>
+              <span class="result" id="cacheInfo"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <button class="btn primary" id="save" type="button">保存设置</button>
+        <button class="btn ghost" id="reset" type="button">恢复默认</button>
+        <span id="saveResult" class="result"></span>
+      </footer>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

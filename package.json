@@ -1,0 +1,13 @@
+{
+  "name": "bilingual-translate-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome 扩展：基于大模型的整页英中对照翻译",
+  "scripts": {
+    "test": "node --test 'test/*.test.mjs'",
+    "zip": "rm -f dist.zip && zip -r dist.zip manifest.json src icons -x '*.DS_Store'"
+  },
+  "devDependencies": {
+    "jsdom": "29.1.1"
+  }
+}

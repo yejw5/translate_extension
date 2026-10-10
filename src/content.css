@@ -1,0 +1,65 @@
+/* 注入到页面的译文样式。使用 .bt-translation 作为块级 span，避免破坏原有 HTML 结构。 */
+
+.bt-translation {
+  display: block !important;
+  margin: 0.4em 0 0.7em !important;
+  padding: 0.05em 0 0.05em 0.75em !important;
+  border-left: 3px solid rgba(47, 111, 237, 0.45) !important;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.7;
+  text-align: start;
+  white-space: normal;
+  text-indent: 0;
+  unicode-bidi: isolate;
+}
+
+/* 表格/列表里收紧一点间距 */
+td > .bt-translation,
+th > .bt-translation,
+li > .bt-translation {
+  margin: 0.25em 0 0.2em !important;
+}
+
+.bt-translation[data-bt-state='loading'] {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.bt-translation[data-bt-state='error'] {
+  border-left-color: #cf222e !important;
+  color: #cf222e !important;
+  font-size: 0.85em !important;
+  opacity: 0.95;
+}
+
+/* ---- 展示风格 ---- */
+
+/* 无装饰 */
+html.bt-style-plain .bt-translation {
+  border-left: none !important;
+  padding-left: 0 !important;
+}
+
+/* 虚线分隔 */
+html.bt-style-dashed .bt-translation {
+  border-left: none !important;
+  padding: 0.35em 0 0 0 !important;
+  border-top: 1px dashed rgba(127, 127, 127, 0.45) !important;
+}
+
+/* 卡片 */
+html.bt-style-card .bt-translation {
+  border-left: none !important;
+  padding: 0.5em 0.7em !important;
+  border-radius: 6px !important;
+  background: rgba(47, 111, 237, 0.07) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html.bt-style-card .bt-translation {
+    background: rgba(140, 170, 255, 0.1) !important;
+  }
+}

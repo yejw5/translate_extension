@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "对照翻译 · Bilingual Translate",
+  "version": "1.0.0",
+  "description": "一键整页对照翻译（默认英→中），翻译结果与原文逐段对照显示，后端可自由配置大模型服务。",
+  "minimum_chrome_version": "102",
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_title": "对照翻译",
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "src/options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "toggle-translate": {
+      "suggested_key": { "default": "Alt+T" },
+      "description": "翻译当前页面 / 恢复原文"
+    }
+  }
+}

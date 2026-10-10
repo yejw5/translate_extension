@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>对照翻译</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="head">
+      <strong>对照翻译</strong>
+      <a id="openOptions" href="#">设置</a>
+    </div>
+
+    <div class="row"><label>原文</label><select id="sourceLang"></select></div>
+    <div class="row"><label>译文</label><select id="targetLang"></select></div>
+
+    <div class="btns">
+      <button id="go" class="btn primary">翻译本页</button>
+      <button id="back" class="btn">恢复原文</button>
+    </div>
+
+    <div class="row small">
+      <label class="check"><input type="checkbox" id="showButton" /> 显示页面悬浮按钮</label>
+    </div>
+
+    <div id="status" class="status"></div>
+    <div class="tip">快捷键 Alt+T 可直接切换翻译 / 原文</div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Demo page for Bilingual Translate</title>
+    <style>
+      body { max-width: 760px; margin: 40px auto; padding: 0 16px;
+             font: 16px/1.7 system-ui, sans-serif; color: #1f2328; }
+      h1 { font-size: 24px; }
+      pre { background: #f6f8fa; padding: 12px; border-radius: 6px; overflow: auto; }
+      table { border-collapse: collapse; width: 100%; }
+      td, th { border: 1px solid #d0d7de; padding: 6px 10px; text-align: left; }
+      blockquote { border-left: 4px solid #d0d7de; margin: 0; padding-left: 14px; color: #555; }
+    </style>
+  </head>
+  <body>
+    <h1>A Short Note on Reading Machines</h1>
+
+    <p class="notice">
+      <span>Discussions:
+      <a href="https://example.com/hn">Hacker News (65 points, 4 comments)</a>, <a href="https://example.com/r">Reddit r/MachineLearning (29 points, 3 comments)</a>
+      </span>
+      <br />
+      <span>Translations: <a href="https://example.com/ar">Arabic</a>, <a href="https://example.com/fr">French</a>, <a href="https://example.com/ja">Japanese</a></span>
+      <br />
+      <span>Watch: MIT's <a href="https://example.com/v">Deep Learning State of the Art</a> lecture referencing this post</span>
+    </p>
+
+    <p>
+      The first thing to notice about a translation layer is that it changes how you read. When the
+      original and the translation sit side by side, you stop treating the target language as a
+      replacement and start treating it as a hint.
+    </p>
+
+    <p>
+      This page exists only to exercise the extension: it contains headings, paragraphs, lists,
+      tables, quotes, inline links such as <a href="https://example.com">this one</a>, inline
+      <code>code_identifiers</code> that must stay untouched, and a code block that should be
+      skipped entirely.
+    </p>
+
+    <h2>Things that should be translated</h2>
+    <ul>
+      <li>Ordinary list items with enough text to be worth translating.</li>
+      <li>Items containing <strong>bold</strong> and <em>italic</em> inline markup.</li>
+      <li>
+        A nested structure:
+        <ul>
+          <li>The inner item is a separate paragraph for translation purposes.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <blockquote>
+      Any sufficiently convenient tool eventually becomes invisible; that is the whole point of it.
+    </blockquote>
+
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Endpoint</td><td>The HTTP address of the model service you want to call.</td></tr>
+        <tr><td>Model</td><td>The identifier of the specific model served at that address.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things that should be left alone</h2>
+    <pre><code>const greeting = "Hello, world!";
+console.log(greeting);</code></pre>
+
+    <p>12345 — 67.89 (%)</p>
+    <p>OK</p>
+    <p>这一段本来就是中文，默认配置下不应该被重复翻译。</p>
+  </body>
+</html>
