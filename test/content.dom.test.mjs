@@ -239,6 +239,31 @@ test('模型把 <kN> 改写成自造标签名时，按未用编号还原超链�
   assert.equal(span.textContent, '训练使用混合精度，参见tunib-ai 的这个 notebook。用 <div> 或 <em> 标签。多余');
 });
 
+test('开闭标签名不一致、或标记丢失时，超链接仍能还原到正确的元素', { skip: !JSDOM && '未安装 jsdom' }, async () => {
+  const html =
+    '<body><p>Training uses <strong>mixed-precision</strong> such as <a href="https://amp.x">AMP</a>, see <a href="https://nb.org/x">this notebook by tunib-ai</a>.</p></body>';
+  const cases = [
+    '参见<k2>tunib-ai 的这个 notebook</tunib-ai>。',
+    '参见<tunib-ai>tunib-ai 的这个 notebook</k2>。',
+    // 其余标记全丢了，只剩自造标签：按标签名匹配到原文含 "tunib-ai" 的链接，而不是第一个 <strong>
+    '参见<tunib-ai>tunib-ai 的这个 notebook</tunib-ai>。',
+  ];
+  for (const out of cases) {
+    const ctx = boot(html, {});
+    await tick();
+    const w = ctx.window;
+    const orig = w.chrome.runtime.sendMessage;
+    w.chrome.runtime.sendMessage = (msg, cb) =>
+      msg.type === 'bt:translate'
+        ? void Promise.resolve().then(() => cb({ ok: true, translations: [out] }))
+        : orig(msg, cb);
+    await ctx.send({ type: 'bt:translate' });
+    await tick(200);
+    const span = w.document.querySelector('.bt-translation');
+    assert.equal(span.innerHTML, '参见<a href="https://nb.org/x">tunib-ai 的这个 notebook</a>。', out);
+  }
+});
+
 test('关闭 preserveInline 后不再发送标记', { skip: !JSDOM && '未安装 jsdom' }, async () => {
   const ctx = boot(
     '<body><p>See the <a href="https://example.com/doc">official guide</a> for details.</p></body>',

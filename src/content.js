@@ -323,9 +323,10 @@
     span.setAttribute('data-bt-state', 'ok');
     span.textContent = '';
     keeps = keeps || [];
-    // 模型偶尔会把 <k2> 改写成 <tunib-ai> 这种自造标签名；记下没出现过的编号，按顺序补位
+    // 模型偶尔会把 <k2> 改写成 <tunib-ai> 这种自造标签名（甚至只改开标签或闭标签）；
+    // 记下没出现过的编号，按顺序补位
     const used = new Set();
-    for (const m of text.matchAll(/<k(\d+)>[\s\S]*?<\/k\1>/g)) used.add(Number(m[1]));
+    for (const m of text.matchAll(/<\/?k(\d+)>/g)) used.add(Number(m[1]));
     const ctx = {
       keeps,
       spare: keeps.map((_, i) => i).filter((i) => !used.has(i)),
@@ -349,47 +350,69 @@
     );
   }
 
-  /** 把 <kN>…</kN> 还原成克隆的原始元素（保留 href/class，因此高亮与原文一致） */
+  /**
+   * 把 <kN>…</kN> 还原成克隆的原始元素（保留 href/class，因此高亮与原文一致）。
+   * 开标签和闭标签按出现顺序配对，不要求同名：模型写成 <k2>…</tunib-ai>
+   * 或 <tunib-ai>…</k2> 也能还原。编号优先取开标签，其次闭标签，最后用未出现过的编号。
+   */
   function appendRich(parent, line, ctx) {
-    const re = /<([A-Za-z][\w.-]*)>([\s\S]*?)<\/\1>/g;
-    let last = 0;
+    const kNum = (name) => (/^k\d+$/.test(name) ? Number(name.slice(1)) : -1);
+    const tagRe = /<(\/?)([A-Za-z][\w.-]*)>/g;
+    let last = 0; // 尚未输出的文本起点
+    let open = null; // { name, start, end }
     let m;
     const plain = (s) => {
       const t = stripTags(s, ctx);
       if (t) parent.appendChild(document.createTextNode(t));
     };
-    while ((m = re.exec(line)) !== null) {
-      const name = m[1];
-      let idx = -1;
-      if (/^k\d+$/.test(name)) {
-        idx = Number(name.slice(1));
-      } else if (inSource(ctx, name)) {
-        // 原文自带的字面量标签：跳过开标签继续往后找
-        re.lastIndex = m.index + name.length + 2;
-        continue;
-      } else if (ctx.spare.length) {
-        idx = ctx.spare.shift();
+    while ((m = tagRe.exec(line)) !== null) {
+      const closing = m[1] === '/';
+      const name = m[2];
+      if (kNum(name) < 0 && inSource(ctx, name)) continue; // 原文自带的字面量标签
+      if (!closing) {
+        if (!open) open = { name, start: m.index, end: tagRe.lastIndex };
+        continue; // 嵌套的开标签当作内容，渲染时去掉
       }
-      if (m.index > last) plain(line.slice(last, m.index));
-      const src = ctx.keeps[idx];
-      const inner = stripTags(m[2], ctx);
-      if (src && isMathRoot(src)) {
-        // 公式整体克隆，忽略模型返回的内容
-        const clone = src.cloneNode(true);
-        clone.removeAttribute('id');
-        clone.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
-        parent.appendChild(clone);
-      } else if (src && inner) {
-        const clone = src.cloneNode(false);
-        clone.removeAttribute('id');
-        clone.textContent = inner;
-        parent.appendChild(clone);
-      } else {
-        plain(m[2]);
-      }
-      last = re.lastIndex;
+      if (!open) continue; // 孤立的闭标签，渲染时去掉
+      let idx = kNum(open.name);
+      if (!ctx.keeps[idx]) idx = kNum(name);
+      if (!ctx.keeps[idx] && ctx.spare.length) idx = takeSpare(ctx, open.name, name);
+      if (open.start > last) plain(line.slice(last, open.start));
+      renderKeep(parent, ctx, idx, line.slice(open.end, m.index));
+      last = tagRe.lastIndex;
+      open = null;
     }
     if (last < line.length) plain(line.slice(last));
+  }
+
+  /** 为自造标签挑一个未用编号：优先选原文含该标签名的元素（<tunib-ai> → "…by tunib-ai"），否则按顺序 */
+  function takeSpare(ctx, ...names) {
+    const words = names.map((n) => n.toLowerCase()).filter((n) => !/^k\d+$/.test(n));
+    let pos = ctx.spare.findIndex((i) => {
+      const t = (ctx.keeps[i].textContent || '').toLowerCase();
+      return words.some((w) => t.includes(w));
+    });
+    if (pos < 0) pos = 0;
+    return ctx.spare.splice(pos, 1)[0];
+  }
+
+  function renderKeep(parent, ctx, idx, raw) {
+    const src = ctx.keeps[idx];
+    const inner = stripTags(raw, ctx);
+    if (src && isMathRoot(src)) {
+      // 公式整体克隆，忽略模型返回的内容
+      const clone = src.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+      parent.appendChild(clone);
+    } else if (src && inner) {
+      const clone = src.cloneNode(false);
+      clone.removeAttribute('id');
+      clone.textContent = inner;
+      parent.appendChild(clone);
+    } else if (inner) {
+      parent.appendChild(document.createTextNode(inner));
+    }
   }
 
   /** 兜底清理：模型偶尔会把输入的包裹标签一起吐回来 */

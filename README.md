@@ -151,7 +151,7 @@ test/                    单元测试（node:test，无需安装依赖）
 ## 开发
 
 ```bash
-npm test          # 32 个单元/集成测试（jsdom 未安装时自动跳过 DOM 部分）
+npm test          # 33 个单元/集成测试（jsdom 未安装时自动跳过 DOM 部分）
 npm i -D jsdom    # 安装后可运行完整的 content script 端到端测试
 npm run zip       # 打包成 dist.zip
 ```
