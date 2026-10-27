@@ -96,9 +96,41 @@
     );
   }
 
+  /**
+   * 数学公式的根元素（MathJax 3 的 <mjx-container>、MathJax 2、KaTeX、原生 MathML）。
+   * 这类元素的字形多由 CSS 生成，文本拿不到；整体当作一个不可拆的行内元素，
+   * 译文里原样克隆过去。
+   */
+  function isMathRoot(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+    const tag = el.tagName.toUpperCase();
+    if (tag === 'MJX-CONTAINER' || tag === 'MATH') return true;
+    const cl = el.classList;
+    return !!cl && (cl.contains('katex') || cl.contains('MathJax') ||
+      cl.contains('MathJax_CHTML') || cl.contains('MathJax_SVG'));
+  }
+
+  /** 独占一行的公式（$$…$$），不并入段落 */
+  function isBlockMath(el) {
+    if (el.classList && (el.classList.contains('katex-display') || el.classList.contains('MathJax_Display'))) return true;
+    if (!isMathRoot(el)) return false;
+    const d = el.getAttribute('display');
+    return d === 'true' || d === 'block';
+  }
+
+  /** 公式的可读文本，只用来给模型提供上下文；渲染时直接克隆原元素 */
+  function mathText(el) {
+    const tex = el.querySelector('annotation[encoding="application/x-tex"]');
+    const mml = el.tagName.toUpperCase() === 'MATH' ? el : el.querySelector('math');
+    const raw = (tex || mml || el).textContent || '';
+    return raw.replace(/\s+/g, ' ').trim();
+  }
+
   function isInline(node) {
     if (node.nodeType === Node.TEXT_NODE) return true;
     if (node.nodeType !== Node.ELEMENT_NODE) return false;
+    if (isBlockMath(node)) return false;
+    if (isMathRoot(node)) return true;
     return INLINE_TAGS.has(node.tagName.toUpperCase());
   }
 
@@ -111,6 +143,7 @@
 
     function visit(el) {
       if (!el || el.nodeType !== Node.ELEMENT_NODE) return;
+      if (isMathRoot(el) || isBlockMath(el)) return;
       if (el.namespaceURI && el.namespaceURI !== HTML_NS) return; // SVG / MathML 等
       if (SKIP_TAGS.has(el.tagName.toUpperCase()) || isOurs(el)) return;
       if (el.hasAttribute(DONE_ATTR)) return;
@@ -173,6 +206,13 @@
       if (node.nodeType !== Node.ELEMENT_NODE) return '';
       const tag = node.tagName.toUpperCase();
       if (tag === 'BR') return '\n';
+      if (isMathRoot(node)) {
+        const tex = mathText(node) || '*';
+        if (!preserve || insideKeep || keeps.length >= MAX_KEEPS) return tex;
+        const idx = keeps.length;
+        keeps.push(node);
+        return `<k${idx}>${tex}</k${idx}>`;
+      }
       if (SKIP_TAGS.has(tag) || isOurs(node)) return '';
 
       const isKeep =
@@ -221,7 +261,7 @@
           counts.set(p, (counts.get(p) || 0) + len);
         } else if (child.nodeType === Node.ELEMENT_NODE) {
           const tag = child.tagName.toUpperCase();
-          if (isOurs(child) || SKIP_TAGS.has(tag)) continue;
+          if (isOurs(child) || SKIP_TAGS.has(tag) || isMathRoot(child)) continue;
           walk(child);
         }
       }
@@ -279,29 +319,67 @@
     return span;
   }
 
-  function fill(span, text, keeps) {
+  function fill(span, text, keeps, source) {
     span.setAttribute('data-bt-state', 'ok');
     span.textContent = '';
+    keeps = keeps || [];
+    // 模型偶尔会把 <k2> 改写成 <tunib-ai> 这种自造标签名；记下没出现过的编号，按顺序补位
+    const used = new Set();
+    for (const m of text.matchAll(/<k(\d+)>[\s\S]*?<\/k\1>/g)) used.add(Number(m[1]));
+    const ctx = {
+      keeps,
+      spare: keeps.map((_, i) => i).filter((i) => !used.has(i)),
+      source: source || '',
+    };
     text.split('\n').forEach((line, i) => {
       if (i) span.appendChild(document.createElement('br'));
-      appendRich(span, line, keeps || []);
+      appendRich(span, line, ctx);
     });
   }
 
+  /** 原文里本来就有的尖括号文本（比如讲 HTML 的文章里的 "<div>"）不当成标记 */
+  function inSource(ctx, name) {
+    return ctx.source.includes('<' + name + '>') || ctx.source.includes('</' + name + '>');
+  }
+
+  /** 去掉所有标记：<kN> 以及原文里没有的、模型自造的标签 */
+  function stripTags(s, ctx) {
+    return stripMarkers(
+      s.replace(/<\/?([A-Za-z][\w.-]*)>/g, (all, name) => (inSource(ctx, name) ? all : ''))
+    );
+  }
+
   /** 把 <kN>…</kN> 还原成克隆的原始元素（保留 href/class，因此高亮与原文一致） */
-  function appendRich(parent, line, keeps) {
-    const re = /<k(\d+)>([\s\S]*?)<\/k\1>/g;
+  function appendRich(parent, line, ctx) {
+    const re = /<([A-Za-z][\w.-]*)>([\s\S]*?)<\/\1>/g;
     let last = 0;
     let m;
     const plain = (s) => {
-      const t = stripMarkers(s);
+      const t = stripTags(s, ctx);
       if (t) parent.appendChild(document.createTextNode(t));
     };
     while ((m = re.exec(line)) !== null) {
+      const name = m[1];
+      let idx = -1;
+      if (/^k\d+$/.test(name)) {
+        idx = Number(name.slice(1));
+      } else if (inSource(ctx, name)) {
+        // 原文自带的字面量标签：跳过开标签继续往后找
+        re.lastIndex = m.index + name.length + 2;
+        continue;
+      } else if (ctx.spare.length) {
+        idx = ctx.spare.shift();
+      }
       if (m.index > last) plain(line.slice(last, m.index));
-      const src = keeps[Number(m[1])];
-      const inner = stripMarkers(m[2]);
-      if (src && inner) {
+      const src = ctx.keeps[idx];
+      const inner = stripTags(m[2], ctx);
+      if (src && isMathRoot(src)) {
+        // 公式整体克隆，忽略模型返回的内容
+        const clone = src.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+        parent.appendChild(clone);
+      } else if (src && inner) {
         const clone = src.cloneNode(false);
         clone.removeAttribute('id');
         clone.textContent = inner;
@@ -416,7 +494,7 @@
             spans[k].remove();
             batch[k].el.removeAttribute(DONE_ATTR);
           } else {
-            fill(spans[k], text, batch[k].keeps);
+            fill(spans[k], text, batch[k].keeps, batch[k].text);
           }
         });
         state.done += batch.length;

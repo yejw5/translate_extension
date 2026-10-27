@@ -189,6 +189,56 @@ test('模型丢掉标记时退化为纯文本，不残留 <kN>', { skip: !JSDOM 
   assert.equal(span.textContent, '先读手册 。');
 });
 
+test('MathJax 公式作为整体保留在段落里，译文里原样克隆', { skip: !JSDOM && '未安装 jsdom' }, async () => {
+  // MathJax 3 CHTML：字形由 CSS ::before 生成，只有 assistive MML 里有文本
+  const mjx = (ch, display = '') =>
+    `<mjx-container class="MathJax" jax="CHTML"${display}><mjx-math class="MJX-TEX"><mjx-mi class="mjx-i"><mjx-c class="mjx-c1D443 TEX-I"></mjx-c></mjx-mi></mjx-math>` +
+    `<mjx-assistive-mml unselectable="on"><math xmlns="http://www.w3.org/1998/Math/MathML"><mi>${ch}</mi></math></mjx-assistive-mml></mjx-container>`;
+  const html =
+    `<body><ul><li>${mjx('P')} is the number of parameters in the transformer model</li></ul>` +
+    `<p>The basic equation is:</p><p>${mjx('C', ' display="true"')}</p></body>`;
+  const ctx = boot(html, {});
+  await tick();
+  await ctx.send({ type: 'bt:translate' });
+  await tick(200);
+
+  const sent = ctx.requests.flat();
+  assert.ok(sent.includes('<k0>P</k0> is the number of parameters in the transformer model'), JSON.stringify(sent));
+  const doc = ctx.window.document;
+  const li = doc.querySelector('li');
+  assert.equal(li.querySelector('[data-bt-run]'), null, '公式不应把段落拆开');
+  const span = li.querySelector('.bt-translation');
+  const clone = span.querySelector('mjx-container');
+  assert.ok(clone && clone.querySelector('mjx-c.mjx-c1D443'), '译文里应有完整的公式克隆');
+  // 独立成行的公式不翻译
+  assert.equal(doc.querySelectorAll('p .bt-translation').length, 1);
+});
+
+test('模型把 <kN> 改写成自造标签名时，按未用编号还原超链接', { skip: !JSDOM && '未安装 jsdom' }, async () => {
+  const ctx = boot(
+    '<body><p>Training uses <strong>mixed-precision</strong>, see <a href="https://nb.org/x">this notebook by tunib-ai</a>. Use <b>&lt;div&gt;</b> or the <span>&lt;em&gt;</span> tag.</p></body>',
+    {}
+  );
+  await tick();
+  const w = ctx.window;
+  const orig = w.chrome.runtime.sendMessage;
+  w.chrome.runtime.sendMessage = (msg, cb) => {
+    if (msg.type === 'bt:translate') {
+      const out = '训练使用<k0>混合精度</k0>，参见<tunib-ai>tunib-ai 的这个 notebook</tunib-ai>。用 <k2><div></k2> 或 <em> 标签。<foo>多余</foo>';
+      return void Promise.resolve().then(() => cb({ ok: true, translations: [out] }));
+    }
+    return orig(msg, cb);
+  };
+  await ctx.send({ type: 'bt:translate' });
+  await tick(200);
+  const span = w.document.querySelector('.bt-translation');
+  const a = span.querySelector('a');
+  assert.ok(a, '应还原成超链接');
+  assert.equal(a.getAttribute('href'), 'https://nb.org/x');
+  assert.equal(a.textContent, 'tunib-ai 的这个 notebook');
+  assert.equal(span.textContent, '训练使用混合精度，参见tunib-ai 的这个 notebook。用 <div> 或 <em> 标签。多余');
+});
+
 test('关闭 preserveInline 后不再发送标记', { skip: !JSDOM && '未安装 jsdom' }, async () => {
   const ctx = boot(
     '<body><p>See the <a href="https://example.com/doc">official guide</a> for details.</p></body>',
